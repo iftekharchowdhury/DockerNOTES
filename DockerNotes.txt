@@ -1,0 +1,332 @@
+Docker compose 
+-----------------
+configuration file 
+
+docker-compose.yml
+
+docker run -d --name=redis redis 
+
+docker run -d --name=db postgres 
+
+docker run -d --name=vote -p 5000:80 voting-app 
+
+docker run -d --name=result -p 5001:80 result-app
+
+docker run -d --name=worker worker
+
+
+link is command line option which can be used to link two containers together.
+
+docker run --links 
+
+docker run --name redis -d redis:alpine
+
+--name = Assign a name to the container
+
+-d = detach 
+
+
+
+
+
+docker run --name redis -d redis:alpine
+docker run -d --name=clickcounter --link redis:redis -p 8085:5000 kodekloud/click-counter
+
+services:
+ redis:
+  image: redis:alpine
+ clickcounter:
+  image: kodekloud/click-counter
+  
+  #kodekloud/click-counter, app is run on port 5000 and expose it on the host port 8085 in the compose file.
+  
+  ports:
+   - 8085:5000
+
+version: '3.0'
+
+Docker Engine
+
+Docker cli 
+REST API 
+Docker deamon 
+
+Docker file system
+========================
+
+/var/lib/docker 
+
+docker volume create data_volume 
+/var/lib/docker 
+    volume
+        data_volume
+
+
+docker run -v data_volume:/var/lib/mysql mysql
+
+docker run --mount type=bind, source=/data/mysql, target=/var/lib/mysql mysql
+
+source is the location on my host and target is the location on the container.
+
+docker run -d --name mysql-db -e MYSQL_ROOT_PASSWORD=db_pass123 mysql
+
+docker run -d \
+--name mysql-db \
+--mount type=bind,source=/opt/data,target=/var/lib/mysql -e MYSQL_ROOT_PASSWORD=db_pass123 mysql
+
+Docker network
+================
+automatically create a network -> bridge none host 
+
+docker network create \
+--driver bridge \
+--subnet 182.18.0.0/16 \
+custom-isolated-network
+
+docker network ls 
+
+docker inspect container name 
+docker network inspect bridge
+docker run --name alpine-2 --network=none alpine
+
+docker network create --driver bridge --subnet 182.18.0.1/24 --gateway 182.18.0.1 wp-mysql-network
+
+docker run -d -e MYSQL_ROOT_PASSWORD=db_pass123 --name mysql-db --network wp-mysql-network mysql:5.6
+
+docker run --network=wp-mysql-network 
+-e DB_Host=mysql-db 
+-e DB_Password=db_pass123 
+-p 38080:8080 
+--name webapp --link mysql-db:mysql-db -d kodekloud/simple-webapp-mysql
+
+docker run -d -p 5000:5000 --restart=always --name my-registry registry:2
+docker image prune -a
+
+
+Docker Engine Architecture 
+---------------------------
+
+Docker cli <-> rest api <-> Docker Daemon
+
+Docker Daemon is actual server or process creating and managing objects 
+objects - images, containers, volumes and networks on a host. 
+
+Rest api - provide interface to manage objects 
+Docker cli= command line interface to manage objects
+
+How docker manage containers on host ?
+LXC container manager - namespaces, cgroups, network, ipc, memory, cpu, block devices, etc.
+
+containerd = is a Daemon that manage containers on host.
+
+runC - Run containers 
+
+containerd-shim = monitor the state of container. what if container goes down.
+
+Four primary objects that Docker engine manages 
+
+Images, network, containers, volumes
+
+Registry: stores docker images and is used to publish and share images publicly or within a private organization.
+
+
+
+Docker service configuration
+=============================
+
+check service status
+--------------------------------
+systemctl start docker
+systemctl status docker
+systemctl stop docker
+
+dockerd --debug 
+        --host=tcp://192:168.1.10:2376 \
+        --tls=true \
+        --tlscert=/var/docker/server.pem \
+        --tlskey=/var/docker/serverkey.pem 
+
+
+
+unix socket
+/var/run/docker.sock 
+
+port = 2375 - un-encrypted
+port = 2376 - encrypted
+
+
+Daemon configuration file 
+---------------------------
+/etc/docker/daemon.json 
+{
+
+    debug: true,
+    "hosts": [tcp://192:168.1.10:2376],
+    "tls": true,
+    "tlscert": "/var/docker/server.pem"
+    "tlskey": "/var/docker/serverkey.pem"
+
+}
+
+Basic Container Operations
+---------------------------
+
+Container create - create a new container 
+------------------------------------------
+docker container create -it --name=my-container ubuntu:latest`
+
+docker container create httpd = will create a image httpd and run it.
+
+container ls - list all containers
+docker container ls 
+
+docker container ls -a | ls -l | ls -q | ls -aq 
+
+docker container start container_id - start a container
+
+create and start a container = docker container run ubuntu 
+
+
+container name 
+---------------------
+docker container run -itd --name=my-container ubuntu:latest
+
+docker container ls -l 
+
+docker container rename my-container my-container-new
+
+docker container ls -l 
+
+
+Detached mode 
+-------------
+docker container run -d ubuntu
+
+What is the default network driver used when a container is created? Bridge 
+
+Container RUN - Escape sequence 
+------------------------------------
+
+ctrl p+q
+
+container exec - executing commands in a running container
+
+Container inspect
+----------------
+
+docker container inspect container_id
+
+Container Stats 
+-----------------
+docker container stats - 
+
+docker container top container id 
+
+Container Logs 
+------------------
+
+docker container logs logtest -f - tail -f - follow the logs
+
+docker system events --since 60m
+
+Stopping and Removing a container 
+----------------------------------
+Linux signals 
+
+docker container run --name web httpd 
+docker container pause container_id
+docker container unpause container_id
+docker container stop container_id
+
+
+Removing a container 
+-------------------------
+docker container stop container_id
+
+docker container rm container_id
+
+docker container ls -q - list only container id that are running 
+
+docker container stop $(docker container ls -q) 
+
+docker container rm $(docker container ls -aq) 
+
+docker container prune - delete all stopped containers 
+
+Remove Flag
+--------------
+Remove a container as soon as it exits.
+
+docker container run --rm ubuntu expr 4 + 4
+
+
+We deployed a container called webapp. Inspect this container to get the IPPrefixLen
+
+docker container inspect webapp | grep IPPrefixLen
+
+
+Container Hostname
+=====================
+
+set the hostname of container 
+
+docker container run -it --name=webapp --hostname=webapp ubuntu
+
+Restart policies 
+------------------
+NO - default settings
+ON-FAILURE 
+ALWAYS 
+UNLESS stopped
+
+
+docker container run --restart=unless-stopped ubuntu 
+
+when docker daemon goes down, it takes down all the containers along with it.
+
+Container cp - from host to container 
+--------------------------------------
+
+docker container cp /tmp/web.conf webapp:/etc/apache2/sites-enabled/
+
+Publishing ports 
+------------------
+
+PORT mapping 
+-----------------
+docker run -p 80:5000 kodekloud/simple-webapp
+
+docker container run -itd --name=kodekloud --rm ubuntu
+
+docker container run -itd --name=caseone --restart=no ubuntu
+
+docker container run -itd --name=casetwo --restart=on-failure ubuntu
+
+docker container top casetwo
+
+kill -9 cmd 
+
+docker container run -itd --name=casefour --restart=unless-stopped ubuntu
+
+systemctl restart docker
+
+docker system events --since 60m
+
+docker container run -itd --name=copytest --rm ubuntu
+
+echo "Hello from kodekloud" > /var/tmp/hello.txt
+
+docker container cp /var/tmp/hello.txt copytest:/root/ 
+
+docker exec -it copytest cat /root/hello.txt
+
+docker container cp copytest:/root/hello.txt /tmp/
+
+docker container run -itd --name=case1 httpd 
+
+docker container run -itd -P --name=case2 httpd - without specifying port
+
+
+docker container run -itd -p 82:80 --name=case2 httpd -  specifying port
+
+docker container restart case2
