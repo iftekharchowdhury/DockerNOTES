@@ -330,3 +330,26 @@ docker container run -itd -P --name=case2 httpd - without specifying port
 docker container run -itd -p 82:80 --name=case2 httpd -  specifying port
 
 docker container restart case2
+
+
+docker container run -d --name webapp httpd - container id is hostname
+
+no - Do not automatically restart the container. (the default)
+
+on-failure - Restart the container if it exits due to an error, 
+which manifests as a non-zero exit code.
+
+always = Always restart the container if it stops. If it is manually stopped, 
+it is restarted only when Docker daemon restarts or the container itself is manually restarted.
+
+unless-stopped = Similar to always, except that when the container is stopped 
+(manually or otherwise), it is not restarted even after Docker daemon restarts.
+
+How to check docker restart policy ? docker container inspect case1 | grep RestartPolicy
+
+docker container update --restart always httpd
+
+docker container update --restart unless-stopped $(docker container ls -q)
+
+Which option is used to reduce container downtime due to daemon crashes, planned outages, or upgrades? --restart=unless-stopped
+
